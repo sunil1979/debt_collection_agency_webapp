@@ -1,6 +1,9 @@
 import { MongoClient } from 'mongodb';
 
-const uri = 'mongodb://adminuser:password123@localhost:32000/?authSource=admin';
+const uri = 'mongodb://adminuser:password123@mongo-nodeport-svc:27017/?authSource=admin';
+//const uri = 'mongodb://localhost:27017/';
+//const uri = 'mongodb://host.docker.internal:27017/';
+
 const options = {};
 
 let client;
