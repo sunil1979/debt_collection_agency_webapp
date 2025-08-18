@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import config from '../../config.json';
 
 interface Customer {
   _id: string;
@@ -23,8 +22,28 @@ interface CustomerTableProps {
   limit: number;
 }
 
+interface AppSettings {
+  agentName?: string;
+}
+
 export default function CustomerTable({ customers, totalCustomers, page, limit }: CustomerTableProps) {
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
+  const [settings, setSettings] = useState<AppSettings>({});
+
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
+          setSettings(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch settings', err);
+      }
+    }
+    fetchSettings();
+  }, []);
 
   const totalPages = Math.ceil(totalCustomers / limit);
 
@@ -49,14 +68,14 @@ export default function CustomerTable({ customers, totalCustomers, page, limit }
 
   const handleCall = async (customerId: string) => {
     try {
-      const response = await fetch(config.apiUrl, {
+      const response = await fetch('/api/proxy/dispatch-agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           customer_id: customerId,
-          agent_name: config.agentName,
+          agent_name: settings.agentName,
         }),
       });
 

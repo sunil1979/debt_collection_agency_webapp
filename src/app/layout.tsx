@@ -40,6 +40,11 @@ export default function RootLayout({
                   Live
                 </Link>
               </li>
+              <li>
+                <Link href="/settings" className="text-gray-300 hover:text-white">
+                  Settings
+                </Link>
+              </li>
             </ul>
           </div>
         </nav>

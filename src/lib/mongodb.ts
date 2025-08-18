@@ -1,7 +1,10 @@
 import { MongoClient } from 'mongodb';
-import config from '../config.json';
 
-const uri = config.mongo_url;
+const uri = process.env.MONGO_URL;
+
+if (!uri) {
+  throw new Error('Please define the MONGO_URL environment variable inside .env.local');
+}
 
 const options = {};
 
