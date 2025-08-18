@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import config from '../../config.json';
 
 interface Customer {
   _id: string;
@@ -43,6 +44,29 @@ export default function CustomerTable({ customers, totalCustomers, page, limit }
       setSelectedCustomers((prevSelected) =>
         prevSelected.filter((id) => id !== customerId)
       );
+    }
+  };
+
+  const handleCall = async (customerId: string) => {
+    try {
+      const response = await fetch(config.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customer_id: customerId,
+          agent_name: config.agentName,
+        }),
+      });
+
+      if (response.ok) {
+        console.log('Call initiated successfully');
+      } else {
+        console.error('Failed to initiate call');
+      }
+    } catch (error) {
+      console.error('Error initiating call:', error);
     }
   };
 
@@ -99,7 +123,7 @@ export default function CustomerTable({ customers, totalCustomers, page, limit }
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <div className="flex space-x-4">
-                  <a href={`tel:${customer.mob_number}`} className="text-blue-600 hover:text-blue-900 flex items-center">
+                  <a onClick={() => handleCall(customer.id)} className="text-blue-600 hover:text-blue-900 flex items-center cursor-pointer">
                     📞 Call
                   </a>
                   <a href={`mailto:${customer.email}`} className="text-green-600 hover:text-green-900 flex items-center">

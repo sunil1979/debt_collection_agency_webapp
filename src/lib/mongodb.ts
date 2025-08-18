@@ -1,8 +1,7 @@
 import { MongoClient } from 'mongodb';
+import config from '../config.json';
 
-const uri = 'mongodb://adminuser:password123@mongo-nodeport-svc:27017/?authSource=admin';
-//const uri = 'mongodb://localhost:27017/';
-//const uri = 'mongodb://host.docker.internal:27017/';
+const uri = config.mongo_url;
 
 const options = {};
 
