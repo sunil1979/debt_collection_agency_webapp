@@ -13,6 +13,7 @@ interface Customer {
     total_outstanding: number;
   };
   id: string;
+  lastContactedOn?: string;
 }
 
 interface CustomerTableProps {
@@ -89,6 +90,22 @@ export default function CustomerTable({ customers, totalCustomers, page, limit }
     }
   };
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) {
+      return 'N/A';
+    }
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    };
+    return date.toLocaleString('en-GB', options);
+  };
+
   return (
     <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
       <table className="min-w-full divide-y divide-gray-200">
@@ -111,7 +128,10 @@ export default function CustomerTable({ customers, totalCustomers, page, limit }
               Phone
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Debt
+              Outstanding Amount
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Last Contacted On
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Actions
@@ -138,7 +158,12 @@ export default function CustomerTable({ customers, totalCustomers, page, limit }
                 <div className="text-sm text-gray-900">{customer.mob_number}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-900">{customer.debt_details.total_outstanding}</div>
+                <div className="text-sm text-gray-900">${customer.debt_details.total_outstanding}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-900">
+                  {formatDate(customer.lastContactedOn)}
+                </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <div className="flex space-x-4">

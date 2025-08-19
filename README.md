@@ -36,7 +36,7 @@ Typical URL when connecting to a mongo instance on local machine looks like : `m
 
 ## Settings
 
-Make sure to visit the Settings and update values. Without updating settings, the application will not work.
+Make sure to visit the Settings and update values. Without updating settings, the application will not work.use the cu
 
 ## Running with Docker
 
