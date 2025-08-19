@@ -2,6 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import PaymentPlanModal from './PaymentPlanModal';
+
+interface PaymentSchedule {
+  payment_date: string;
+  amount: number;
+  payment_status: string;
+}
+
+interface PaymentPlan {
+  payment_reference_number: string;
+  payment_schedule: PaymentSchedule[];
+}
 
 interface Customer {
   _id: string;
@@ -14,6 +26,7 @@ interface Customer {
   };
   id: string;
   lastContactedOn?: string;
+  payment_plan?: PaymentPlan;
 }
 
 interface CustomerTableProps {
@@ -30,6 +43,7 @@ interface AppSettings {
 export default function CustomerTable({ customers, totalCustomers, page, limit }: CustomerTableProps) {
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
   const [settings, setSettings] = useState<AppSettings>({});
+  const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<PaymentPlan | null>(null);
 
   useEffect(() => {
     async function fetchSettings() {
@@ -179,12 +193,24 @@ export default function CustomerTable({ customers, totalCustomers, page, limit }
                   <a href={`/customers/${customer.id}/edit`} className="text-yellow-600 hover:text-yellow-900 flex items-center">
                     ✏️ Edit
                   </a>
+                  {customer.payment_plan && (
+                    <button onClick={() => setSelectedPaymentPlan(customer.payment_plan!)} className="text-purple-600 hover:text-purple-900 flex items-center">
+                      💳 Payment Plan
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {selectedPaymentPlan && (
+        <PaymentPlanModal 
+          paymentPlan={selectedPaymentPlan} 
+          onClose={() => setSelectedPaymentPlan(null)} 
+        />
+      )}
 
       <nav className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
         <div className="flex-1 flex justify-between sm:hidden">

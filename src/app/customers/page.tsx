@@ -12,6 +12,14 @@ interface Customer {
   };
   id: string;
   lastContactedOn?: string;
+  payment_plan?: {
+    payment_reference_number: string;
+    payment_schedule: {
+      payment_date: string;
+      amount: number;
+      payment_status: string;
+    }[];
+  };
 }
 
 async function getTotalCustomers(): Promise<number> {
@@ -60,6 +68,7 @@ async function getCustomers(page: number, limit: number): Promise<Customer[]> {
     mob_number: customer.mob_number || '',
     debt_details: customer.debt_details || { total_outstanding: 0 },
     lastContactedOn: customer.lastContactedOn || null,
+    payment_plan: customer.payment_plan || null,
   }));
 }
 
