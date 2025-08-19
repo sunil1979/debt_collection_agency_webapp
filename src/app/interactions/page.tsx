@@ -47,10 +47,14 @@ async function getInteractions(
 
   let customerQuery: any = {};
   if (customerName) {
-    customerQuery.$or = [
-      { first_name: { $regex: customerName, $options: 'i' } },
-      { last_name: { $regex: customerName, $options: 'i' } },
-    ];
+    const nameParts = customerName.trim().split(/\s+/);
+    const andConditions = nameParts.map(part => ({
+      $or: [
+        { first_name: { $regex: part, $options: 'i' } },
+        { last_name: { $regex: part, $options: 'i' } },
+      ],
+    }));
+    customerQuery.$and = andConditions;
   }
   if (customerEmail) {
     customerQuery.email = { $regex: customerEmail, $options: 'i' };
@@ -106,10 +110,14 @@ async function getTotalInteractions(
 
   let customerQuery: any = {};
   if (customerName) {
-    customerQuery.$or = [
-      { first_name: { $regex: customerName, $options: 'i' } },
-      { last_name: { $regex: customerName, $options: 'i' } },
-    ];
+    const nameParts = customerName.trim().split(/\s+/);
+    const andConditions = nameParts.map(part => ({
+      $or: [
+        { first_name: { $regex: part, $options: 'i' } },
+        { last_name: { $regex: part, $options: 'i' } },
+      ],
+    }));
+    customerQuery.$and = andConditions;
   }
   if (customerEmail) {
     customerQuery.email = { $regex: customerEmail, $options: 'i' };

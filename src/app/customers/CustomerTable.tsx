@@ -145,9 +145,9 @@ export default function CustomerTable({ customers, totalCustomers, page, limit }
                   <a onClick={() => handleCall(customer.id)} className="text-blue-600 hover:text-blue-900 flex items-center cursor-pointer">
                     📞 Call
                   </a>
-                  <a href={`mailto:${customer.email}`} className="text-green-600 hover:text-green-900 flex items-center">
-                    ✉️ Email
-                  </a>
+                  <Link href={`/interactions?customerName=${encodeURIComponent(customer.first_name + ' ' + customer.last_name)}&customerEmail=${encodeURIComponent(customer.email)}`} className="text-green-600 hover:text-green-900 flex items-center">
+                    📜 History
+                  </Link>
                   <a href={`/customers/${customer.id}`} className="text-indigo-600 hover:text-indigo-900 flex items-center">
                     👁️ View
                   </a>
