@@ -95,11 +95,18 @@ export default function LivePage() {
       const token = data.token;
 
       const room = new Room({
+        audioCaptureDefaults: {
+          deviceId: 'default',
+        },
         publishDefaults: {
-          audio: !listenOnly,
-          video: false,
+          videoCodec: 'vp8',
         },
       });
+
+      // Mute the microphone if listenOnly is true
+      if (listenOnly) {
+        room.localParticipant.setMicrophoneEnabled(false);
+      }
 
       await room.connect(settings.livekit_host, token);
       setActiveRoom(room);
