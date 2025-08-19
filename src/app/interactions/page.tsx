@@ -1,4 +1,3 @@
-
 import clientPromise from '@/lib/mongodb';
 import InteractionsTable from './InteractionsTable';
 import InteractionFilter from './InteractionFilter';
@@ -35,18 +34,29 @@ interface CustomerInteraction {
   interactions: Interaction[];
 }
 
-async function getInteractions(filterDate?: string, customerName?: string, page: number = 1, limit: number = 10): Promise<CustomerInteraction[]> {
+async function getInteractions(
+  filterDate?: string,
+  customerName?: string,
+  customerEmail?: string,
+  customerPhone?: string,
+  page: number = 1,
+  limit: number = 10
+): Promise<CustomerInteraction[]> {
   const client = await clientPromise;
   const db = client.db('debt_collection_agency');
 
   let customerQuery: any = {};
   if (customerName) {
-    customerQuery = {
-      $or: [
-        { first_name: { $regex: customerName, $options: 'i' } },
-        { last_name: { $regex: customerName, $options: 'i' } },
-      ],
-    };
+    customerQuery.$or = [
+      { first_name: { $regex: customerName, $options: 'i' } },
+      { last_name: { $regex: customerName, $options: 'i' } },
+    ];
+  }
+  if (customerEmail) {
+    customerQuery.email = { $regex: customerEmail, $options: 'i' };
+  }
+  if (customerPhone) {
+    customerQuery.mob_number = { $regex: customerPhone, $options: 'i' };
   }
 
   const customers = await db.collection('customers').find(customerQuery).toArray();
@@ -54,11 +64,11 @@ async function getInteractions(filterDate?: string, customerName?: string, page:
   const filteredCustomerIds = Array.from(customerMap.keys());
 
   let interactionQuery: any = {};
-  if (filteredCustomerIds.length > 0) {
+  if (Object.keys(customerQuery).length > 0) {
+    if (filteredCustomerIds.length === 0) {
+      return []; // No customers matched, so no interactions
+    }
     interactionQuery.customer_id = { $in: filteredCustomerIds };
-  } else if (customerName) {
-    // If a customer name was provided but no customers matched, return empty interactions
-    return [];
   }
 
   const interactions = await db.collection('customer_interaction').find(interactionQuery).skip((page - 1) * limit).limit(limit).toArray();
@@ -85,28 +95,38 @@ async function getInteractions(filterDate?: string, customerName?: string, page:
   });
 }
 
-async function getTotalInteractions(filterDate?: string, customerName?: string): Promise<number> {
+async function getTotalInteractions(
+  filterDate?: string,
+  customerName?: string,
+  customerEmail?: string,
+  customerPhone?: string
+): Promise<number> {
   const client = await clientPromise;
   const db = client.db('debt_collection_agency');
 
   let customerQuery: any = {};
   if (customerName) {
-    customerQuery = {
-      $or: [
-        { first_name: { $regex: customerName, $options: 'i' } },
-        { last_name: { $regex: customerName, $options: 'i' } },
-      ],
-    };
+    customerQuery.$or = [
+      { first_name: { $regex: customerName, $options: 'i' } },
+      { last_name: { $regex: customerName, $options: 'i' } },
+    ];
+  }
+  if (customerEmail) {
+    customerQuery.email = { $regex: customerEmail, $options: 'i' };
+  }
+  if (customerPhone) {
+    customerQuery.mob_number = { $regex: customerPhone, $options: 'i' };
   }
 
   const customers = await db.collection('customers').find(customerQuery).toArray();
   const filteredCustomerIds = Array.from(new Map(customers.map(c => [c._id.toString(), `${c.first_name} ${c.last_name}`])).keys());
 
   let interactionQuery: any = {};
-  if (filteredCustomerIds.length > 0) {
+  if (Object.keys(customerQuery).length > 0) {
+    if (filteredCustomerIds.length === 0) {
+      return 0;
+    }
     interactionQuery.customer_id = { $in: filteredCustomerIds };
-  } else if (customerName) {
-    return 0;
   }
 
   const interactions = await db.collection('customer_interaction').find(interactionQuery).toArray();
@@ -120,15 +140,16 @@ async function getTotalInteractions(filterDate?: string, customerName?: string):
   return filteredCount;
 }
 
-export default async function InteractionsPage({ searchParams }: { searchParams: { date?: string; customerName?: string; page?: string; limit?: string } }) {
-  console.log('InteractionsPage re-rendering with searchParams:', searchParams);
-  const filterDate = searchParams.date || new Date().toISOString().split('T')[0];
+export default async function InteractionsPage({ searchParams }: { searchParams: { date?: string; customerName?: string; customerEmail?: string; customerPhone?: string; page?: string; limit?: string } }) {
+  const filterDate = searchParams.date || '';
   const customerName = searchParams.customerName || '';
+  const customerEmail = searchParams.customerEmail || '';
+  const customerPhone = searchParams.customerPhone || '';
   const page = parseInt(searchParams.page || '1');
   const limit = parseInt(searchParams.limit || '10');
 
-  const interactions = await getInteractions(filterDate, customerName, page, limit);
-  const totalInteractions = await getTotalInteractions(filterDate, customerName);
+  const interactions = await getInteractions(filterDate, customerName, customerEmail, customerPhone, page, limit);
+  const totalInteractions = await getTotalInteractions(filterDate, customerName, customerEmail, customerPhone);
 
   return (
     <div className="container mx-auto py-10">

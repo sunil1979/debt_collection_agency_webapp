@@ -6,17 +6,19 @@ import { useState, useEffect } from 'react';
 export default function InteractionFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const today = new Date().toISOString().split('T')[0];
-
+  
   const [isOpen, setIsOpen] = useState(false);
-  const [filterDate, setFilterDate] = useState(searchParams.get('date') || today);
+  const [filterDate, setFilterDate] = useState(searchParams.get('date') || '');
   const [filterCustomerName, setFilterCustomerName] = useState(searchParams.get('customerName') || '');
+  const [filterCustomerEmail, setFilterCustomerEmail] = useState(searchParams.get('customerEmail') || '');
+  const [filterCustomerPhone, setFilterCustomerPhone] = useState(searchParams.get('customerPhone') || '');
 
   useEffect(() => {
-    // Sync internal state with URL params on initial load or URL changes
-    setFilterDate(searchParams.get('date') || today);
+    setFilterDate(searchParams.get('date') || '');
     setFilterCustomerName(searchParams.get('customerName') || '');
-  }, [searchParams, today]);
+    setFilterCustomerEmail(searchParams.get('customerEmail') || '');
+    setFilterCustomerPhone(searchParams.get('customerPhone') || '');
+  }, [searchParams]);
 
   const applyFilters = () => {
     const params = new URLSearchParams();
@@ -26,14 +28,22 @@ export default function InteractionFilter() {
     if (filterCustomerName) {
       params.set('customerName', filterCustomerName);
     }
-    router.push(`?${params.toString()}`);
+    if (filterCustomerEmail) {
+      params.set('customerEmail', filterCustomerEmail);
+    }
+    if (filterCustomerPhone) {
+      params.set('customerPhone', filterCustomerPhone);
+    }
+    router.push(`/interactions?${params.toString()}`);
     setIsOpen(false);
   };
 
   const resetFilters = () => {
-    setFilterDate(today);
+    setFilterDate('');
     setFilterCustomerName('');
-    router.push(`?`); // Clear all search params
+    setFilterCustomerEmail('');
+    setFilterCustomerPhone('');
+    router.push('/interactions');
     setIsOpen(false);
   };
 
@@ -69,6 +79,30 @@ export default function InteractionFilter() {
               value={filterCustomerName}
               onChange={(e) => setFilterCustomerName(e.target.value)}
               placeholder="Enter customer name"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="filterCustomerEmail" className="block text-sm font-medium text-gray-700">Customer Email:</label>
+            <input
+              type="email"
+              id="filterCustomerEmail"
+              name="filterCustomerEmail"
+              value={filterCustomerEmail}
+              onChange={(e) => setFilterCustomerEmail(e.target.value)}
+              placeholder="Enter customer email"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="filterCustomerPhone" className="block text-sm font-medium text-gray-700">Customer Phone:</label>
+            <input
+              type="tel"
+              id="filterCustomerPhone"
+              name="filterCustomerPhone"
+              value={filterCustomerPhone}
+              onChange={(e) => setFilterCustomerPhone(e.target.value)}
+              placeholder="Enter customer phone"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
           </div>

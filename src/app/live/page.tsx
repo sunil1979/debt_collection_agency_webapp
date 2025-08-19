@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Room } from 'livekit-client';
 import RoomCard from './RoomCard';
+import LoadingSpinner from '@/app/components/LoadingSpinner';
 
 interface LiveKitRoom {
   sid: string;
@@ -20,45 +21,51 @@ export default function LivePage() {
   const [isListening, setIsListening] = useState(false);
   const [settings, setSettings] = useState<AppSettings>({});
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchSettings() {
+    async function fetchInitialData() {
       try {
-        const response = await fetch('/api/settings');
-        if (response.ok) {
-          const data = await response.json();
-          setSettings(data);
+        const settingsResponse = await fetch('/api/settings');
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json();
+          setSettings(settingsData);
         }
-      } catch (err) {
-        console.error('Failed to fetch settings', err);
-      }
-    }
-    fetchSettings();
-  }, []);
 
-  useEffect(() => {
-    async function fetchRooms() {
-      try {
-        const response = await fetch('/api/livekit/rooms');
-        const data = await response.json();
-        if (response.ok) {
-          if (Array.isArray(data.rooms)) {
-            setRooms(data.rooms);
+        const roomsResponse = await fetch('/api/livekit/rooms');
+        const roomsData = await roomsResponse.json();
+        if (roomsResponse.ok) {
+          if (Array.isArray(roomsData.rooms)) {
+            setRooms(roomsData.rooms);
           }
         } else {
-          setError(data.error || 'Failed to fetch rooms.');
+          setError(roomsData.error || 'Failed to fetch rooms.');
         }
       } catch (error) {
-        setError('An error occurred while fetching rooms.');
-        console.error('Error fetching rooms:', error);
+        setError('An error occurred while fetching data.');
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
       }
     }
 
-    fetchRooms(); // Fetch rooms on initial render
+    fetchInitialData();
 
-    const interval = setInterval(fetchRooms, 5000); // Fetch rooms every 5 seconds
+    const interval = setInterval(async () => {
+      try {
+        const roomsResponse = await fetch('/api/livekit/rooms');
+        const roomsData = await roomsResponse.json();
+        if (roomsResponse.ok) {
+          if (Array.isArray(roomsData.rooms)) {
+            setRooms(roomsData.rooms);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching rooms:', error);
+      }
+    }, 5000);
 
-    return () => clearInterval(interval); // Cleanup interval on component unmount
+    return () => clearInterval(interval);
   }, []);
 
   const handleJoinRoom = async (roomName: string, listenOnly: boolean) => {
@@ -104,6 +111,10 @@ export default function LivePage() {
       console.error('Error joining room:', error);
     }
   };
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className="container mx-auto py-10">

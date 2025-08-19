@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+import LoadingSpinner from '@/app/components/LoadingSpinner';
+
 interface AppSettings {
   apiUrl: string;
   livekit_host: string;
@@ -63,7 +65,7 @@ export default function SettingsPage() {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <LoadingSpinner />;
   }
 
   return (
