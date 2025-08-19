@@ -30,11 +30,16 @@ export async function POST(req: NextRequest) {
     const settingsData = await req.json();
     const collection = await getSettingsCollection();
 
-    // Only update the secret if a new one is provided
+    // If the secret is the placeholder, don't update it.
+    // If a new secret is provided, encrypt and save it.
     if (settingsData.livekit_api_secret && settingsData.livekit_api_secret !== '********') {
       settingsData.livekit_api_secret = encrypt(settingsData.livekit_api_secret);
+    } else if (settingsData.livekit_api_secret === '********') {
+      delete settingsData.livekit_api_secret;
     } else {
-      // If the secret is not provided or is the placeholder, don't update it.
+      // Handle the case where the secret might be intentionally cleared.
+      // If you want to allow clearing the secret, you would set it to an empty string or handle as needed.
+      // For now, we'll just delete it to avoid saving an empty value.
       delete settingsData.livekit_api_secret;
     }
 

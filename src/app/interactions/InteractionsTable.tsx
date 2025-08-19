@@ -36,13 +36,13 @@ const ExpandedRow = ({ interaction }: { interaction: FlatInteraction }) => (
 );
 
 export default function InteractionsTable({ interactions, page, limit, totalInteractions }: InteractionsTableProps) {
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const searchParams = useSearchParams();
 
   const totalPages = Math.ceil(totalInteractions / limit);
 
-  const toggleRow = (id: string) => {
-    setExpandedRow(expandedRow === id ? null : id);
+  const toggleRow = (index: number) => {
+    setExpandedRow(expandedRow === index ? null : index);
   };
 
   const formatTime = (dateTimeString: string) => {
@@ -95,14 +95,14 @@ export default function InteractionsTable({ interactions, page, limit, totalInte
           </tr>
         </thead>
         <tbody className="text-gray-700">
-          {interactions.map((interaction) => (
-            <React.Fragment key={interaction._id}>
+          {interactions.map((interaction, index) => (
+            <React.Fragment key={interaction._id || index}>
               <tr
                 className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer"
-                onClick={() => toggleRow(interaction._id)}
+                onClick={() => toggleRow(index)}
               >
                 <td className="py-3 px-4 text-center">
-                  {expandedRow === interaction._id ? (
+                  {expandedRow === index ? (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                   ) : (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
@@ -121,7 +121,7 @@ export default function InteractionsTable({ interactions, page, limit, totalInte
                 <td className="py-3 px-4">{formatDate(interaction.followup_date)}</td>
                 <td className="py-3 px-4">${interaction.cost.toFixed(2)}</td>
               </tr>
-              {expandedRow === interaction._id && <ExpandedRow interaction={interaction} />}
+              {expandedRow === index && <ExpandedRow interaction={interaction} />}
             </React.Fragment>
           ))}
         </tbody>

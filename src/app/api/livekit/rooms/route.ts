@@ -13,6 +13,7 @@ export async function GET() {
   try {
     const collection = await getSettingsCollection();
     const settings = await collection.findOne({});
+    console.log('Retrieved LiveKit settings from DB:', settings);
 
     if (!settings || typeof settings.livekit_host !== 'string' || !settings.livekit_api_key || !settings.livekit_api_secret) {
       return NextResponse.json({ error: 'LiveKit server configuration is missing or invalid' }, { status: 500 });
