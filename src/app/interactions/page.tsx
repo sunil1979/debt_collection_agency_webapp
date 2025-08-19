@@ -1,20 +1,19 @@
 import clientPromise from '@/lib/mongodb';
 import InteractionsTable from './InteractionsTable';
 import InteractionFilter from './InteractionFilter';
-import { ObjectId } from 'mongodb';
 
-interface Interaction {
+export interface FlatInteraction {
+  _id: string;
+  customer_name: string;
   interaction_date: string;
   start_time: string;
   end_time: string;
-  agent_id: string;
-  agent_name: string;
-  job_id: string;
   audio_file: string;
   interaction_sentiment_analysis: string;
   agent_notes: string;
   followup_required: boolean;
   followup_date: string;
+  cost: number; // Assuming cost is a number
   interaction: {
     items: {
       id: string;
@@ -27,13 +26,6 @@ interface Interaction {
   };
 }
 
-interface CustomerInteraction {
-  _id: string;
-  customer_id: string;
-  customer_name?: string;
-  interactions: Interaction[];
-}
-
 async function getInteractions(
   filterDate?: string,
   customerName?: string,
@@ -41,62 +33,100 @@ async function getInteractions(
   customerPhone?: string,
   page: number = 1,
   limit: number = 10
-): Promise<CustomerInteraction[]> {
+): Promise<FlatInteraction[]> {
   const client = await clientPromise;
   const db = client.db('debt_collection_agency');
 
-  let customerQuery: any = {};
+  let customerMatch: any = {};
+  const andConditions: any[] = [];
   if (customerName) {
     const nameParts = customerName.trim().split(/\s+/);
-    const andConditions = nameParts.map(part => ({
+    andConditions.push(...nameParts.map(part => ({
       $or: [
-        { first_name: { $regex: part, $options: 'i' } },
-        { last_name: { $regex: part, $options: 'i' } },
+        { 'customer_info.first_name': { $regex: part, $options: 'i' } },
+        { 'customer_info.last_name': { $regex: part, $options: 'i' } },
       ],
-    }));
-    customerQuery.$and = andConditions;
+    })));
   }
   if (customerEmail) {
-    customerQuery.email = { $regex: customerEmail, $options: 'i' };
+    andConditions.push({ 'customer_info.email': { $regex: customerEmail, $options: 'i' } });
   }
   if (customerPhone) {
-    customerQuery.mob_number = { $regex: customerPhone, $options: 'i' };
+    andConditions.push({ 'customer_info.mob_number': { $regex: customerPhone, $options: 'i' } });
+  }
+  if (andConditions.length > 0) {
+    customerMatch.$and = andConditions;
   }
 
-  const customers = await db.collection('customers').find(customerQuery).toArray();
-  const customerMap = new Map(customers.map(c => [c._id.toString(), `${c.first_name} ${c.last_name}`]));
-  const filteredCustomerIds = Array.from(customerMap.keys());
+  const pipeline: any[] = [
+    {
+      $lookup: {
+        from: 'customers',
+        let: { customer_id_str: '$customer_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $eq: [ '$_id', { $toObjectId: '$$customer_id_str' } ]
+              }
+            }
+          }
+        ],
+        as: 'customer_info'
+      }
+    },
+    { $unwind: '$customer_info' },
+    { $match: customerMatch },
+    { $unwind: '$interactions' },
+  ];
 
-  let interactionQuery: any = {};
-  if (Object.keys(customerQuery).length > 0) {
-    if (filteredCustomerIds.length === 0) {
-      return []; // No customers matched, so no interactions
-    }
-    interactionQuery.customer_id = { $in: filteredCustomerIds };
+  if (filterDate) {
+    const startDate = new Date(filterDate);
+    startDate.setUTCHours(0, 0, 0, 0);
+
+    const endDate = new Date(filterDate);
+    endDate.setUTCHours(23, 59, 59, 999);
+
+    pipeline.push({
+      $addFields: {
+        'interactions.interaction_date_converted': { $toDate: '$interactions.interaction_date' }
+      }
+    });
+    pipeline.push({
+      $match: {
+        'interactions.interaction_date_converted': {
+          $gte: startDate,
+          $lt: endDate,
+        }
+      }
+    });
   }
 
-  const interactions = await db.collection('customer_interaction').find(interactionQuery).skip((page - 1) * limit).limit(limit).toArray();
+  pipeline.push(
+    {
+      $project: {
+        _id: { $toString: '$interactions._id' },
+        customer_name: { $concat: ['$customer_info.first_name', ' ', '$customer_info.last_name'] },
+        interaction_date: '$interactions.interaction_date',
+        start_time: '$interactions.start_time',
+        end_time: '$interactions.end_time',
+        audio_file: '$interactions.audio_file',
+        interaction_sentiment_analysis: '$interactions.interaction_sentiment_analysis',
+        agent_notes: '$interactions.agent_notes',
+        followup_required: '$interactions.followup_required',
+        followup_date: '$interactions.followup_date',
+        cost: { $ifNull: ['$interactions.cost', 0] },
+        interaction: '$interactions.interaction'
+      }
+    },
+    { $sort: { interaction_date: -1, start_time: -1 } },
+    { $skip: (page - 1) * limit },
+    { $limit: limit }
+  );
 
-  const finalInteractions = interactions.map((customerInteraction: any) => ({
-    ...customerInteraction,
-    _id: customerInteraction._id.toString(),
-    customer_name: customerMap.get(customerInteraction.customer_id) || 'Unknown Customer',
-    interactions: customerInteraction.interactions.filter((interaction: any) =>
-      filterDate ? interaction.interaction_date.startsWith(filterDate) : true
-    ),
-  })).filter(customerInteraction => customerInteraction.interactions.length > 0);
+  const interactions = await db.collection('customer_interaction').aggregate(pipeline).toArray();
 
-  return finalInteractions.sort((a, b) => {
-    const latestA = a.interactions.reduce((maxDateTime, interaction) => {
-      const currentDateTime = `${interaction.interaction_date} ${interaction.start_time}`;
-      return currentDateTime > maxDateTime ? currentDateTime : maxDateTime;
-    }, '');
-    const latestB = b.interactions.reduce((maxDateTime, interaction) => {
-      const currentDateTime = `${interaction.interaction_date} ${interaction.start_time}`;
-      return currentDateTime > maxDateTime ? currentDateTime : maxDateTime;
-    }, '');
-    return latestB.localeCompare(latestA); // Sort in descending order (most recent first)
-  });
+  return interactions as FlatInteraction[];
 }
 
 async function getTotalInteractions(
@@ -108,44 +138,76 @@ async function getTotalInteractions(
   const client = await clientPromise;
   const db = client.db('debt_collection_agency');
 
-  let customerQuery: any = {};
+  let customerMatch: any = {};
+  const andConditions: any[] = [];
   if (customerName) {
     const nameParts = customerName.trim().split(/\s+/);
-    const andConditions = nameParts.map(part => ({
+    andConditions.push(...nameParts.map(part => ({
       $or: [
-        { first_name: { $regex: part, $options: 'i' } },
-        { last_name: { $regex: part, $options: 'i' } },
+        { 'customer_info.first_name': { $regex: part, $options: 'i' } },
+        { 'customer_info.last_name': { $regex: part, $options: 'i' } },
       ],
-    }));
-    customerQuery.$and = andConditions;
+    })));
   }
   if (customerEmail) {
-    customerQuery.email = { $regex: customerEmail, $options: 'i' };
+    andConditions.push({ 'customer_info.email': { $regex: customerEmail, $options: 'i' } });
   }
   if (customerPhone) {
-    customerQuery.mob_number = { $regex: customerPhone, $options: 'i' };
+    andConditions.push({ 'customer_info.mob_number': { $regex: customerPhone, $options: 'i' } });
+  }
+  if (andConditions.length > 0) {
+    customerMatch.$and = andConditions;
   }
 
-  const customers = await db.collection('customers').find(customerQuery).toArray();
-  const filteredCustomerIds = Array.from(new Map(customers.map(c => [c._id.toString(), `${c.first_name} ${c.last_name}`])).keys());
+  const pipeline: any[] = [
+    {
+      $lookup: {
+        from: 'customers',
+        let: { customer_id_str: '$customer_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $eq: [ '$_id', { $toObjectId: '$$customer_id_str' } ]
+              }
+            }
+          }
+        ],
+        as: 'customer_info'
+      }
+    },
+    { $unwind: '$customer_info' },
+    { $match: customerMatch },
+    { $unwind: '$interactions' },
+  ];
 
-  let interactionQuery: any = {};
-  if (Object.keys(customerQuery).length > 0) {
-    if (filteredCustomerIds.length === 0) {
-      return 0;
-    }
-    interactionQuery.customer_id = { $in: filteredCustomerIds };
+  if (filterDate) {
+    const startDate = new Date(filterDate);
+    startDate.setUTCHours(0, 0, 0, 0);
+
+    const endDate = new Date(filterDate);
+    endDate.setUTCHours(23, 59, 59, 999);
+
+    pipeline.push({
+      $addFields: {
+        'interactions.interaction_date_converted': { $toDate: '$interactions.interaction_date' }
+      }
+    });
+    pipeline.push({
+      $match: {
+        'interactions.interaction_date_converted': {
+          $gte: startDate,
+          $lt: endDate,
+        }
+      }
+    });
   }
 
-  const interactions = await db.collection('customer_interaction').find(interactionQuery).toArray();
+  pipeline.push({ $count: 'total' });
 
-  const filteredCount = interactions.filter((customerInteraction: any) =>
-    customerInteraction.interactions.some((interaction: any) =>
-      filterDate ? interaction.interaction_date.startsWith(filterDate) : true
-    )
-  ).length;
+  const result = await db.collection('customer_interaction').aggregate(pipeline).toArray();
 
-  return filteredCount;
+  return result.length > 0 ? result[0].total : 0;
 }
 
 export default async function InteractionsPage({ searchParams }: { searchParams: { date?: string; customerName?: string; customerEmail?: string; customerPhone?: string; page?: string; limit?: string } }) {
